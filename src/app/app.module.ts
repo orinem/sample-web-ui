@@ -39,8 +39,39 @@ import { IMqttServiceOptions, MqttModule } from 'ngx-mqtt'
 import { EventLogComponent } from './devices/event-log/event-log.component'
 import { EventChannelComponent } from './event-channel/event-channel.component'
 import { NgxMatDatetimePickerModule, NgxMatNativeDateModule, NgxMatTimepickerModule } from '@angular-material-components/datetime-picker'
+import { IPublicClientApplication, PublicClientApplication, LogLevel } from '@azure/msal-browser'
+import { MsalModule, MsalBroadcastService, MsalService, MSAL_INSTANCE, MsalRedirectComponent } from '@azure/msal-angular'
+import { environment } from 'src/environments/environment'
+
+// Does any of this run on IE anyway?  IE doesn't have includes() so have to use indexOf to test for it.
+// eslint-disable-next-line @typescript-eslint/prefer-includes
+const isIE = window.navigator.userAgent.indexOf('MSIE ') > -1 || window.navigator.userAgent.indexOf('Trident/') > -1
+
+export function loggerCallback (logLevel: LogLevel, message: string): void {
+  console.log(message)
+}
 
 const MQTT_SERVICE_OPTIONS: IMqttServiceOptions = { protocol: 'wss' }
+export function MSALInstanceFactory (): IPublicClientApplication {
+  return new PublicClientApplication({
+    auth: {
+      clientId: environment.mpsAzureClientId,
+      authority: `https://login.microsoftonline.com/${environment.mpsAzureTenantId}`, // The Azure cloud instance and the app's sign-in audience (tenant ID, common, organizations, or consumers)
+      redirectUri: environment.azureRedirectUri
+    },
+    cache: {
+      cacheLocation: 'localStorage',
+      storeAuthStateInCookie: isIE // Set to true for Internet Explorer 11
+    },
+    system: {
+      loggerOptions: {
+        loggerCallback,
+        logLevel: LogLevel.Info,
+        piiLoggingEnabled: false
+      }
+    }
+  })
+}
 
 @NgModule({
   declarations: [
@@ -89,15 +120,25 @@ const MQTT_SERVICE_OPTIONS: IMqttServiceOptions = { protocol: 'wss' }
     KvmModule,
     NgxMatDatetimePickerModule,
     NgxMatNativeDateModule,
-    NgxMatTimepickerModule
+    NgxMatTimepickerModule,
+    MsalModule
   ],
   providers: [
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthorizeInterceptor,
       multi: true
-    }
+    },
+    {
+      provide: MSAL_INSTANCE,
+      useFactory: MSALInstanceFactory
+    },
+    MsalService,
+    MsalBroadcastService
   ],
-  bootstrap: [AppComponent]
+  bootstrap: [
+    AppComponent,
+    MsalRedirectComponent
+  ]
 })
 export class AppModule { }

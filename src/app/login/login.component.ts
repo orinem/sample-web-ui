@@ -21,7 +21,12 @@ export class LoginComponent implements OnInit {
   public isLoading = false
   public errorMessage = ''
   public loginPassInputType = 'password'
-  constructor (public snackBar: MatSnackBar, public router: Router, public fb: FormBuilder, public authService: AuthService) {
+  constructor (
+    public snackBar: MatSnackBar,
+    public router: Router,
+    public fb: FormBuilder,
+    public authService: AuthService
+    ) {
     this.loginForm = fb.group({
       userId: [null, Validators.required],
       password: [null, Validators.required]
@@ -29,6 +34,24 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit (): void {
+  }
+
+  async onSubmitAzure (): Promise<void> {
+    this.isLoading = true
+    this.authService.loginAzure().subscribe({
+      complete: () => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        this.router.navigate([''])
+      },
+      error: (err) => {
+        console.log(err)
+        this.snackBar.open($localize`Error logging in`, undefined, SnackbarDefaults.defaultError)
+      },
+      next: () => {
+      }
+    }).add(() => {
+      this.isLoading = false
+    })
   }
 
   async onSubmit (): Promise<void> {
@@ -48,7 +71,6 @@ export class LoginComponent implements OnInit {
           }
         },
         next: () => {
-
         }
       }).add(() => {
         this.isLoading = false
